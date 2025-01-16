@@ -62,25 +62,27 @@ exports.createAdmin = async (req, res) => {
 };
 
 exports.updateAdmin = async (req, res) => {
-    const { id } = req.params;
+    const { body, params: { id } } = req
     try {
-        const { value, error } = adminSchema.validate(req.body);
+    const oldAdmin = await Admin.findById(id)
+    if (!oldAdmin) {
+        return res.status(404).json({ error: "Admin topilmadi." });
+      }
+
+    const { value, error } = adminSchema.validate(body);
         
-        const hashedPassword = await bcrypt.hash(value.password, 10);
-
-        await Admin.create({ 
-            adminName: value.adminName, 
-            email: value.email, 
-            password: hashedPassword });
-
-
-        const updatedAdmin = await Admin.findByIdAndUpdate(id, updateData, {
-            new: true,
-        });
-
+    const hashedPassword = await bcrypt.hash(value.password, 10);
+  
+    const admin = {
+        adminName: value.adminName, 
+        email: value.email, 
+        password: hashedPassword
+    };
+  
+    const updatedAdmin = await Admin.findByIdAndUpdate(id, admin)
 
     if (!updatedAdmin) {
-      return res.status(404).json({ error: "Admin topilmadi." });
+      return res.status(404).json({ error: "Yangi Admin topilmadi." });
     }
         return res.status(200).json({
             message: "Admin muvaffaqiyatli yangilandi",
