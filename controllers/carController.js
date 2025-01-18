@@ -49,8 +49,8 @@ const addCar = async (req, res) => {
 
     const carData = {
       model,
-      title,
-      description,
+      // title,
+      // description,
       year,
       price,
       image: imageUrl,
