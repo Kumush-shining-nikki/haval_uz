@@ -27,12 +27,22 @@ const addCar = async (req, res) => {
   const { model, title, description, year, price } = req.body;
 
   try {
+    if(!req.file) {
+      console.log(req.file)
+      return res.status(404).json({
+        message: "Fayl topilmadi"
+      })
+    }
     const bucketName = 'Haval';
-    const fileName = `${Date.now()}_${req.file.originalname}`;
+    const {buffer, originalname} = req.file
+    const fileName = `${Date.now()}_${originalname}`;
+
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucketName)
-      .upload(fileName, req.file.buffer, {
+      .upload(fileName, buffer, {
+        casheControl: '3600',
+        upsert: false,
         contentType: req.file.mimetype,
       });
 
@@ -49,8 +59,8 @@ const addCar = async (req, res) => {
 
     const carData = {
       model,
-      // title,
-      // description,
+      title,
+      description,
       year,
       price,
       image: imageUrl,
@@ -116,6 +126,7 @@ const updateCar = async (req, res) => {
     res.status(500).json({ error: 'Ichki server xatosi yuz berdi.' });
   }
 };
+
 
 
 const deleteCar = async (req, res) => {
