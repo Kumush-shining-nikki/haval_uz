@@ -29,7 +29,7 @@ const getCars = async (req, res) => {
     }
 };
 
-..const addCar = async (req, res) => {
+const addCar = async (req, res) => {
     const { model, title, description, year, price } = req.body;
 
     try {
