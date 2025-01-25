@@ -87,20 +87,20 @@ const addCar = async (req, res) => {
 
 const updateCar = async (req, res) => {
     const carId = req.params.id;
-    const { name, newImagePath } = req.body; 
+    const { model, year, price, image } = req.body; 
   
     try {
-      const car = await carsCollection.findOne({ _id: new ObjectId(carId) });
+      const car = await Car.findOne({ _id: new ObjectId(carId) });
   
       if (!car) {
         return res.status(404).json({ message: "Mashina topilmadi" });
       }
   
-      if (newImagePath && car.imagePath) {
+      if (image && car.newImage) {
         const { error: deleteError } = await supabase
           .storage
           .from("Haval")
-          .remove([car.imagePath]);
+          .remove([car.newImage]);
   
         if (deleteError) {
           console.error("Eski rasmni o'chirishda xatolik:", deleteError.message);
@@ -109,11 +109,13 @@ const updateCar = async (req, res) => {
       }
   
       const updateData = {
-        name: name || car.name, 
-        imagePath: newImagePath || car.imagePath, 
+        model: model || car.model, 
+        year: year || car.year,
+        price: price || car.price,
+        imagePath: image || car.newImage, 
       };
   
-      const updateResult = await carsCollection.updateOne(
+      const updateResult = await Car.updateOne(
         { _id: new ObjectId(carId) },
         { $set: updateData }
       );
