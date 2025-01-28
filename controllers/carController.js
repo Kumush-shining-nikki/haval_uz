@@ -1,4 +1,4 @@
-const Car = require("../models/Car");
+const { Car } = require("../models/Car");
 const mongoose = require("mongoose");
 const { supabase } = require("../config/supabaseClient");
 
@@ -41,7 +41,7 @@ const addCar = async (req, res) => {
         }
         const bucketName = "Haval";
         const { buffer, originalname } = req.file;
-        const fileName = `${Date.now()}_${originalname}`;
+        const fileName = `cars/${Date.now()}_${originalname}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from(bucketName)
@@ -66,14 +66,14 @@ const addCar = async (req, res) => {
 
         const carData = {
             model,
-            title,
-            description,
+            // title,
+            // description,
             year,
             price,
             image: imageUrl,
         };
 
-        const result = await CarModel.create(carData);
+        const result = await Car.create(carData);
 
         res.status(200).json({
             message: "Mashina muvaffaqiyatli qo'shildi",
@@ -86,70 +86,121 @@ const addCar = async (req, res) => {
 };
 
 const updateCar = async (req, res) => {
-    const carId = req.params.id;
-    const { model, year, price, image } = req.body; 
-  
+    const id = req.params.id;
+    const { model, year, price } = req.body;
+
     try {
-      const car = await Car.findOne({ _id: new ObjectId(carId) });
-  
-      if (!car) {
-        return res.status(404).json({ message: "Mashina topilmadi" });
-      }
-  
-      if (image && car.newImage) {
-        const { error: deleteError } = await supabase
-          .storage
-          .from("Haval")
-          .remove([car.newImage]);
-  
-        if (deleteError) {
-          console.error("Eski rasmni o'chirishda xatolik:", deleteError.message);
-          return res.status(500).json({ message: "Eski rasmni o'chirishda xatolik yuz berdi." });
+        if (!req.file) {
+            return res.status(400).json({
+                message: "Fayl topilmadi. Iltimos, tasvirni yuklang.",
+            });
         }
-      }
-  
-      const updateData = {
-        model: model || car.model, 
-        year: year || car.year,
-        price: price || car.price,
-        imagePath: image || car.newImage, 
-      };
-  
-      const updateResult = await Car.updateOne(
-        { _id: new ObjectId(carId) },
-        { $set: updateData }
-      );
-  
-      if (updateResult.modifiedCount === 0) {
-        return res.status(400).json({ message: "Ma'lumotlar yangilanmadi." });
-      }
-  
-      res.status(200).json({ message: "Mashina muvaffaqiyatli yangilandi", updatedData: updateData });
-    } catch (error) {
-      console.error("Xatolik:", error);
-      res.status(500).json({ message: "Xatolik yuz berdi" });
+
+        const bucketName = "Haval";
+        const { buffer, originalname } = req.file;
+        const fileName = `cars/${Date.now()}_${originalname}`;
+
+        const existingCar = await Car.findById(id);
+        if (!existingCar) {
+            return res.status(404).json({ message: "Mashina topilmadi." });
+        }
+        const oldImagePath = existingCar.image
+            ? existingCar.image.split("/").pop()
+            : null;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from(bucketName)
+            .upload(fileName, buffer, {
+                cacheControl: "3600",
+                upsert: false,
+                contentType: req.file.mimetype,
+            });
+
+        if (uploadError) {
+            console.error("Tasvirni yuklashda xato:", uploadError.message);
+            return res.status(500).json({
+                error: "Tasvirni yuklashda xatolik yuz berdi.",
+            });
+        }
+
+        const { data: publicUrlData, error: publicUrlError } = supabase.storage
+            .from(bucketName)
+            .getPublicUrl(fileName);
+
+        if (publicUrlError || !publicUrlData) {
+            console.error(
+                "Tasvir URL-ni olishda xato:",
+                publicUrlError.message
+            );
+            return res.status(500).json({
+                error: "Tasvir URL-ni olishda xatolik yuz berdi.",
+            });
+        }
+
+        const imageUrl = publicUrlData.publicUrl;
+
+        if (oldImagePath) {
+            const { error: removeError } = await supabase.storage
+                .from(bucketName)
+                .remove([oldImagePath]);
+
+            if (removeError) {
+                console.error(
+                    "Eski tasvirni o'chirishda xato:",
+                    removeError.message
+                );
+            }
+        }
+
+        const updateData = { model, year, price, image: imageUrl };
+
+        await Car.findByIdAndUpdate(id, updateData, { new: true });
+        return res.status(200).json({
+            message: "Mashina ma'lumotlari muvaffaqiyatli yangilandi.",
+            data: updateData,
+        });
+    } catch (err) {
+        console.error("Server xatosi:", err);
+        res.status(500).json({ error: "Ichki server xatosi yuz berdi." });
     }
 };
 
 const deleteCar = async (req, res) => {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ error: "Yaroqsiz ID" });
-    }
+    const carId = req.params.id;
 
     try {
-        const car = await Car.findById(id);
+        const car = await Car.findOne({ _id: new ObjectId(carId) });
+
         if (!car) {
-            return res.status(404).json({ error: "Mashina topilmadi" });
+            return res.status(404).json({ message: "Mashina topilmadi" });
         }
 
-        await Car.findByIdAndDelete(id);
+        if (car.imagePath) {
+            const { error: deleteError } = await supabase.storage
+                .from("Haval")
+                .remove([car.imagePath]);
 
-        res.status(200).json({ message: "Mashina muvaffaqiyatli o‘chirildi" });
+            if (deleteError) {
+                console.error(
+                    "Supabase rasmni o'chirishda xatolik:",
+                    deleteError.message
+                );
+                return res
+                    .status(500)
+                    .json({ message: "Rasmni o'chirishda xatolik yuz berdi." });
+            }
+        }
+
+        const deleteResult = await Car.deleteOne({ _id: new ObjectId(carId) });
+
+        if (deleteResult.deletedCount === 0) {
+            return res.status(404).json({ message: "Mashina o'chirilmadi" });
+        }
+
+        res.status(200).json({ message: "Mashina muvaffaqiyatli o'chirildi" });
     } catch (error) {
-        console.error("Carni o'chirishda xato:", error);
-        res.status(500).json({ error: "Serverda xatolik yuz berdi" });
+        console.error("Xatolik:", error);
+        res.status(500).json({ message: "Xatolik yuz berdi" });
     }
 };
 
