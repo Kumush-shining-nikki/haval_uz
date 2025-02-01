@@ -2,6 +2,8 @@ const { Car } = require("../models/Car");
 const mongoose = require("mongoose");
 const { supabase } = require("../config/supabaseClient");
 const { carSchema } = require("../validators/add_car.validate.js");
+const dotenv = require("dotenv").config();
+const SUPABASE_URL = process.env.SUPABASE_URL
 
 const getCars = async (req, res) => {
     try {
@@ -21,6 +23,7 @@ const getCars = async (req, res) => {
         res.status(500).json({ error: "Bazaga ulanishda xatolik yuz berdi" });
     }
 };
+
 
 const addCar = async (req, res) => {
     try {
@@ -74,6 +77,7 @@ const addCar = async (req, res) => {
     }
 };
 
+
 const updateCar = async (req, res) => {
     const {
         body,
@@ -93,23 +97,10 @@ const updateCar = async (req, res) => {
             const { buffer, originalname, mimetype } = req.file;
             const fileName = `cars/${Date.now()}_${originalname}`;
 
-            const { error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(fileName, buffer, {
-                    cacheControl: "3600",
-                    upsert: false,
-                    contentType: mimetype,
-                });
-
-            if (uploadError) {
-                console.error("❌ Tasvirni yuklashda xato:", uploadError.message);
-                return res.status(500).json({ error: "Tasvirni yuklashda xatolik yuz berdi." });
-            }
-            imageUrl = supabase.storage.from(bucketName).getPublicUrl(fileName).publicUrl;
-
+            // **1. Avval eski rasmni o‘chiramiz**  
             if (existingCar.image) {
                 const oldImagePath = existingCar.image.replace(
-                    supabase.storage.from(bucketName).getPublicUrl("").publicUrl,
+                    `https://your-project-id.supabase.co/storage/v1/object/public/${bucketName}/`,
                     ""
                 );
 
@@ -122,6 +113,23 @@ const updateCar = async (req, res) => {
                     return res.status(500).json({ error: "Eski tasvirni o‘chirishda xatolik yuz berdi." });
                 }
             }
+
+            // **2. Yangi rasmni yuklash**
+            const { error: uploadError } = await supabase.storage
+                .from(bucketName)
+                .upload(fileName, buffer, {
+                    cacheControl: "3600",
+                    upsert: false,
+                    contentType: mimetype,
+                });
+
+            if (uploadError) {
+                console.error("❌ Tasvirni yuklashda xato:", uploadError.message);
+                return res.status(500).json({ error: "Tasvirni yuklashda xatolik yuz berdi." });
+            }
+
+            // **3. Yangi rasm URL'sini olish**
+            imageUrl = supabase.storage.from(bucketName).getPublicUrl(fileName).publicUrl;
         }
 
         const { value, error } = carSchema.validate(body);
@@ -152,30 +160,40 @@ const deleteCar = async (req, res) => {
     const carId = req.params.id;
 
     try {
+        // **1. Mashinani topamiz**
         const car = await Car.findById(carId); 
-
         if (!car) {
             return res.status(404).json({ message: "Mashina topilmadi" });
         }
 
-        if (car.imagePath) {
-            const { data, error } = await supabase.storage
-                .from("Haval")
-                .remove([car.imagePath]);
+        // **2. Agar rasm bo‘lsa, uni Supabase’dan o‘chiramiz**
+        if (car.image) {
+            // Supabase URL'dan faqat fayl yo‘lini olish
+            const bucketName = "Haval";
+            const filePath = car.image.replace(
+                `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/`,
+                ""
+            );
 
-            if (error) {
-                console.error("❌ Supabase rasmni o‘chirishda xatolik:", error.message);
+            // Supabase’dan rasmni o‘chirish
+            const { error: removeError } = await supabase.storage
+                .from(bucketName)
+                .remove([filePath]);
+
+            if (removeError) {
+                console.error("❌ Supabase rasmni o‘chirishda xato:", removeError.message);
                 return res.status(500).json({ message: "Rasmni o‘chirishda xatolik yuz berdi." });
             }
         }
 
+        // **3. Mashinani bazadan o‘chirish**
         const deleteResult = await Car.deleteOne({ _id: carId });
 
         if (deleteResult.deletedCount === 0) {
             return res.status(500).json({ message: "Mashina o‘chirilmadi" });
         }
 
-        res.status(200).json({ message: "✅ Mashina muvaffaqiyatli o‘chirildi" });
+        res.status(200).json({ message: "✅ Mashina va unga bog‘langan rasm muvaffaqiyatli o‘chirildi" });
     } catch (error) {
         console.error("❌ Xatolik:", error);
         res.status(500).json({ message: "Server xatosi yuz berdi" });

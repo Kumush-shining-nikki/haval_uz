@@ -11,7 +11,10 @@ const getAllNews = async (req, res) => {
           })
         }
     
-        return res.status(200).send(news)
+        return res.status(200).send({
+          message: "Yangiliklar",
+          news
+  })
     
   } catch (error) {
     console.log(error);
@@ -56,7 +59,7 @@ const updateNews = async (req, res) => {
   const { title, description, image } = req.body;
   try {
  if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Noto'g'ri car ID." });
+      return res.status(400).json({ error: "Noto'g'ri ID." });
     }
 
     const updateData = {};
