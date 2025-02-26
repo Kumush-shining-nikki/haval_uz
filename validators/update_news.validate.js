@@ -1,10 +1,16 @@
 const { checkSchema } = require("express-validator");
 
 const allowedFormats = ["jpg", "jpeg", "png", "gif"];
-const minSize = 100 * 1024; 
+const minSize = 100 * 1024;
 const maxSize = 4 * 1024 * 1024; 
 
-exports.validateNews = checkSchema({
+exports.validateNewsUpdate = checkSchema({
+  id: {
+    in: ["params"],
+    isMongoId: {
+      errorMessage: "Yaroqsiz ID format!"
+    }
+  },
   title: {
     in: ["body"],
     isString: {
@@ -12,14 +18,6 @@ exports.validateNews = checkSchema({
     },
     notEmpty: {
       errorMessage: "Sarlavha bo‘sh bo‘lmasligi kerak!"
-    },
-    isLength: {
-      options: { min: 20 },
-      errorMessage: "Sarlavha 20 ta belgidan kam bo‘lmasligi kerak!"
-    },
-    isLength: {
-      options: { max: 150 },
-      errorMessage: "Sarlavha 150 ta belgidan ko‘p bo‘lmasligi kerak!"
     }
   },
   description: {
@@ -29,31 +27,20 @@ exports.validateNews = checkSchema({
     },
     notEmpty: {
       errorMessage: "Matn bo‘sh bo‘lmasligi kerak!"
-    },
-    isLength: {
-      options: { min: 50 },
-      errorMessage: "Matn 50 ta belgidan kam bo‘lmasligi kerak!"
-    },
-    isLength: {
-      options: { max: 250 },
-      errorMessage: "Matn 250 ta belgidan ko‘p bo‘lmasligi kerak!"
     }
   },
   image: {
     in: ["body"],
+    optional: true, 
     custom: {
       options: (_, { req }) => {
-        if (!req.file) {
-          throw new Error("Rasm talab qilinadi!");
-        }
+        if (!req.file) return true; 
 
         const { originalname, size } = req.file;
         const fileExtension = originalname.split(".").pop().toLowerCase();
 
         if (!allowedFormats.includes(fileExtension)) {
-          throw new Error(
-            "Faqat JPG, JPEG, PNG yoki GIF formatlari ruxsat etiladi!"
-          );
+          throw new Error("Faqat JPG, JPEG, PNG yoki GIF formatlari ruxsat etiladi!");
         }
 
         if (size < minSize) {

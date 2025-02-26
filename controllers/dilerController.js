@@ -19,15 +19,21 @@ const getDiler = async (req, res) => {
 };
 
 const addDiler = async (req, res) => {
-  const { title, manzil, workHoursDays, workHoursStart, workHoursEnd, phone } = req.body;
+   const { title, manzil, workHoursDays, workHoursStart, workHoursEnd, phone } = require(req.body);
   try {
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const newDiler = await Diler.create({
       title,
       manzil,
       workHoursDays,
       workHoursStart,
       workHoursEnd,
-      phone,
+      phone
     });
 
     res.status(200).json({ message: 'Ma\'lumotlar muvaffaqiyatli yuborildi:', data: newDiler });
@@ -39,24 +45,29 @@ const addDiler = async (req, res) => {
 
 const updateDiler = async (req, res) => {
   const { id } = req.params;
-  const { dilerId, title, manzil, workHoursDays, workHoursStart, workHoursEnd, phone } = req.body;
   try {
+    
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
           return res.status(400).json({ error: "Noto'g'ri ID." });
         }
 
-    const updateData = {};  
+    const { dilerId, title, manzil, workHoursDays, workHoursStart, workHoursEnd, phone } = require(req.body)
+
+    const updateData = {
+      dilerId,
+      title,
+      manzil,
+      workHoursDays,
+      workHoursStart,
+      workHoursEnd,
+      phone
+    };  
     
-     if ( dilerId, title, manzil, workHours, phone) {
-            await Diler.find({ dilerId, title, manzil, workHoursDays, workHoursStart, workHoursEnd, phone, _id: { $ne: id } });
-              updateData.dilerId = dilerId;
-              updateData.title = title; 
-              updateData.manzil = manzil; 
-              updateData.workHoursDays = workHoursDays; 
-              updateData.workHoursStart = workHoursStart; 
-              updateData.workHoursEnd = workHoursEnd;
-              updateData.phone = phone;
-        }
     
     const diler = await Diler.findByIdAndUpdate(id, updateData, { new: true });
 

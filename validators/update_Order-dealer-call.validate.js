@@ -1,6 +1,12 @@
 const { checkSchema } = require("express-validator");
 
-exports.validateOrder_Dealer_Call = checkSchema({
+exports.validateOrder_Dealer_CallUpdate = checkSchema({
+  id: {
+    in: ["params"],
+    isMongoId: {
+      errorMessage: "Yaroqsiz ID format!"
+    }
+  },
   diler: {
     in: ["body"],
     isString: {
@@ -28,7 +34,7 @@ exports.validateOrder_Dealer_Call = checkSchema({
       errorMessage: "Telefon bo‘sh bo‘lmasligi kerak!"
     },
     matches: {
-      options: [/^\+?\d{9,15}$/], 
+      options: [/^\+?\d{9,15}$/], // Telefon raqam formatini tekshirish
       errorMessage: "Telefon raqam noto‘g‘ri formatda!"
     }
   },

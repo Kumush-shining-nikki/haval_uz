@@ -1,16 +1,25 @@
-const Joi = require("joi")
+const { checkSchema } = require("express-validator");
 
-exports.loginSchema = Joi.object({
-    email: Joi.string().required().messages({
-        "string.base": "Email string bo'lishi kerak!",
-        "string.empty": "Email bo'sh bo'lmasligi kerak!",
-        "any.required": "Email talab qilinadi",
-    }),
-    password: Joi.string().min(6).required().messages({
-        "string.base": "Parol string bo'lishi kerak!",
-        "string.empty": "Parol bo'sh bo'lishi kerak emas!",
-        "string.min": "Parol 6 ta dan kam bo'lmasligi kerak!",
-        "string.max": "Parol 32 ta dan ko'p bo'lmasligi kerak!",
-        "any.required": "Parol talab qilinadi",
-    })
-})
+exports.validateLogin = checkSchema({
+    email: {
+        in: ["body"],
+        isString: { errorMessage: "Email string bo'lishi kerak!" },
+        isEmail: { errorMessage: "Email noto'g'ri formatda!" },
+        notEmpty: { errorMessage: "Email bo'sh bo'lmasligi kerak!" }
+    },
+    password: {
+        in: ["body"],
+        isString: { errorMessage: "Parol string bo'lishi kerak!" },
+        notEmpty: { errorMessage: "Parol bo'sh bo'lmasligi kerak!" },
+        isLength: [
+            {
+                options: { min: 6 },
+                errorMessage: "Parol 6 ta belgidan kam bo'lmasligi kerak!"
+            },
+            {
+                options: { max: 20 },
+                errorMessage: "Parol 20 ta belgidan ko'p bo'lmasligi kerak!"
+            }
+        ]
+    }
+});

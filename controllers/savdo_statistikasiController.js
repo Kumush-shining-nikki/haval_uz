@@ -15,14 +15,46 @@ const getAllSavdoStatistikasi = async (req, res) => {
 };
 
 const addSavdoStatistikasi = async (req, res) => {
-  const { title, description, image, createdAt } = req.body;
   try {
+    const { title, description } = require(req.body)
+        
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    if (!req.file) {
+        return res.status(404).json({ message: "Fayl topilmadi" });
+    }
+
+    const bucketName = "Haval";
+    const { buffer, originalname } = req.file;
+    const fileName = `savdoStatistikasi/${Date.now()}_${originalname}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, buffer, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: req.file.mimetype,
+        });
+
+    if (uploadError) {
+        console.error("Tasvirni yuklashda xato:", uploadError.message);
+        return res.status(500).json({ error: "Tasvirni yuklashda xatolik yuz berdi." });
+    }
+
+    
+    const { data: publicUrlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
+
+    const imageUrl = publicUrlData.publicUrl;
+
     const newStatistika = await Savdo_statistikasi.create({
       title,
       description,
-      image,
-      createdAt,
-      updatedAt: createdAt, 
+      image: imageUrl
     });
 
     return res.status(200).json({
@@ -36,20 +68,68 @@ const addSavdoStatistikasi = async (req, res) => {
 
 const updateSavdoStatistikasi = async (req, res) => {
   const { id } = req.params;
-  const { title, description, image } = req.body;
   try {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-          return res.status(400).json({ error: "Noto'g'ri car ID." });
+    const { title, description } = require(req.body)
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+        const existingCar = await Car.findById(id);
+        if (!existingCar) {
+            return res.status(404).json({ message: "Mashina topilmadi." });
         }
-    
-        const updateData = {};
-    
-        if (title, description, image) {
-            await Car.find({title, description, image, _id: { $ne: id } });
-              updateData.title = title; 
-              updateData.description = description; 
-              updateData.image = image; 
+
+        let imageUrl = existingCar.image;
+
+        if (req.file) {
+            const bucketName = "Haval";
+            const { buffer, originalname, mimetype } = req.file;
+            const fileName = `news/${Date.now()}_${originalname}`;
+
+            if (existingCar.image) {
+                const oldImagePath = existingCar.image.replace(`${storageUrl}/object/public/Haval/`, "");
+
+                console.log(oldImagePath);
+                const { error: removeError } = await supabase.storage
+                    .from(bucketName)
+                    .remove([oldImagePath]);
+
+                if (removeError) {
+                    console.error("❌ Eski tasvirni o‘chirishda xato:", removeError.message);
+                    return res.status(500).json({
+                        error: "Eski tasvirni o‘chirishda xatolik yuz berdi.",
+                    });
+                }
+            }
+
+            const { error: uploadError } = await supabase.storage
+                .from(bucketName)
+                .upload(fileName, buffer, {
+                    cacheControl: "3600",
+                    upsert: true,
+                    contentType: mimetype,
+                });
+
+            if (uploadError) {
+                console.error("❌ Tasvirni yuklashda xato:", uploadError.message);
+                return res.status(500).json({ error: "Tasvirni yuklashda xatolik yuz berdi." });
+            }
+
+            const { data: publicUrlData } = supabase.storage
+                .from(bucketName)
+                .getPublicUrl(fileName);
+
+            imageUrl = publicUrlData.publicUrl;
         }
+
+        const updateData = {
+          title,
+          description,
+          image: imageUrl,
+        };
+    
     
     const updatedStatistika = await Savdo_statistikasi.findByIdAndUpdate(id, updateData, { new: true } );
 

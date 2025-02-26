@@ -2,9 +2,15 @@ const { checkSchema } = require("express-validator");
 
 const allowedFormats = ["jpg", "jpeg", "png", "gif"];
 const minSize = 100 * 1024; 
-const maxSize = 4 * 1024 * 1024; 
+const maxSize = 4 * 1024 * 1024;
 
-exports.validateNews = checkSchema({
+exports.validateSavdoStatistikasiUpdate = checkSchema({
+  id: {
+    in: ["params"],
+    isMongoId: {
+      errorMessage: "Yaroqsiz ID format!"
+    }
+  },
   title: {
     in: ["body"],
     isString: {
@@ -15,7 +21,7 @@ exports.validateNews = checkSchema({
     },
     isLength: {
       options: { min: 20 },
-      errorMessage: "Sarlavha 20 ta belgidan kam bo‘lmasligi kerak!"
+      errorMessage: "Sarlavha kamida 20 ta belgidan iborat bo‘lishi kerak!"
     },
     isLength: {
       options: { max: 150 },
@@ -32,7 +38,7 @@ exports.validateNews = checkSchema({
     },
     isLength: {
       options: { min: 50 },
-      errorMessage: "Matn 50 ta belgidan kam bo‘lmasligi kerak!"
+      errorMessage: "Matn kamida 50 ta belgidan iborat bo‘lishi kerak!"
     },
     isLength: {
       options: { max: 250 },
@@ -40,27 +46,23 @@ exports.validateNews = checkSchema({
     }
   },
   image: {
-    in: ["body"],
     custom: {
-      options: (_, { req }) => {
+      options: (value, { req }) => {
         if (!req.file) {
           throw new Error("Rasm talab qilinadi!");
         }
 
-        const { originalname, size } = req.file;
-        const fileExtension = originalname.split(".").pop().toLowerCase();
-
+        const file = req.file;
+        const fileExtension = file.originalname.split(".").pop().toLowerCase();
         if (!allowedFormats.includes(fileExtension)) {
-          throw new Error(
-            "Faqat JPG, JPEG, PNG yoki GIF formatlari ruxsat etiladi!"
-          );
+          throw new Error("Faqat JPG, JPEG, PNG yoki GIF formatlari ruxsat etiladi!");
         }
 
-        if (size < minSize) {
+        if (file.size < minSize) {
           throw new Error("Rasm hajmi kamida 100 KB bo‘lishi kerak!");
         }
 
-        if (size > maxSize) {
+        if (file.size > maxSize) {
           throw new Error("Rasm hajmi 4 MB dan oshmasligi kerak!");
         }
 

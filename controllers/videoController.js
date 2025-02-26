@@ -1,6 +1,5 @@
 const Video = require('../models/Video');
 const mongoose = require("mongoose")
-const { videoSchema } = require("../validators/video.validate")
 
 exports.getVideos = async (req, res) => {
   try {
@@ -18,23 +17,17 @@ exports.getVideos = async (req, res) => {
 };
 
 exports.addVideo = async (req, res) => {
-  const { title, video, createdAt } = req.body;
-  
-  function formatDate(date) {
-    const d = new Date(date);
-    const hours = d.getHours();
-    const minutes = d.getMinutes();
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
-    const year = String(d.getFullYear()).slice(-2);
-    return `${day}/${month}/${year}, ${hours}:${String(minutes).padStart(2, "0")}`;
-  }
   try {
+    const { title, video } = require(req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const newVideo = await Video.create({
       title,
       video,
-      createdAt: formatDate(new Date()), 
-      updatedAt: formatDate(new Date()), 
     });
 
     return res.status(200).json({
@@ -52,21 +45,22 @@ exports.updateVideo = async (req, res) => {
     params: { id },
 } = req;
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const existingVideo = await Video.findById(id);
     if (!existingVideo) {
         return res.status(404).json({ message: "Video topilmadi." });
     }
 
-    console.log(body)
-      const { value, error } = videoSchema.validate(body)
-      if (error) {
-        return res.status(400).json({ error: error.details[0].message });
-    }
+    const { title, video } = require(req.body);
 
       const updateData = {
-            title: value.title,
-            video: value.video
-        }
+        title,
+        video
+      }
 
     const updatedVideo = await Video.findByIdAndUpdate(id, updateData, { new: true });
     

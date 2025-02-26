@@ -16,13 +16,20 @@ const getTestDrivers = async (req, res) => {
 };
 
 const addTestDriver = async (req, res) => {
-  const { toliqIsm, model, phone, izoh } = req.body;
   try {
+    const { toliqIsm, model, phone, izoh } = require(req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+
     const newDriver = await Test_drayver.create({
       toliqIsm,
       model,
       phone,
-      izoh,
+      izoh
     });
  
     return res.status(200).json({
@@ -38,6 +45,10 @@ const addTestDriver = async (req, res) => {
 //   const { id } = req.params;
 //   const { toliqIsm, model, phone, izoh } = req.body;
 //   try {
+  // const errors = validationResult(req);
+  //   if (!errors.isEmpty()) {
+  //       return res.status(400).json({ errors: errors.array() });
+  //   }
 //  if (!mongoose.Types.ObjectId.isValid(id)) {
 //       return res.status(400).json({ error: "Noto'g'ri ID." });
 //     }

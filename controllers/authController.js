@@ -3,10 +3,15 @@ const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const loginSchema = require("../validators/login.validate");
+const { validationResult } = require("express-validator");
 
 exports.register = async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        
         const { name, email, password, role } = req.body;
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,7 +41,7 @@ exports.register = async (req, res) => {
                 .json({ message: "Barcha maydonlarni to‘ldiring." });
         }
 
-        if (!process.env.JWT_SECRET) {
+        if (!process.env.JWT_SECRET_KEY) {
             throw new Error("JWT_SECRET muhit o'zgaruvchisi mavjud emas!");
         }
 
@@ -46,10 +51,10 @@ exports.register = async (req, res) => {
                 email: user.email,
                 role: user.role,
             },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET_KEY,
             { expiresIn: "1h" }
         );
-
+        console.log(token)
         res.status(200).json({
             message: "Foydalanuvchi muvaffaqiyatli ro‘yxatdan o‘tdi.",
             user,
@@ -60,17 +65,48 @@ exports.register = async (req, res) => {
     }
 };
 
+exports.login = async (req, res) => {
+    try {
+    const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+      const { email, password } = req.body;
+      const user = await User.findOne({ email });
+      if (!user) return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
+  
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) return res.status(400).json({ message: 'Noto‘g‘ri parol' });
+  
+      const token = jwt.sign(
+        { 
+            id: user._id, 
+            email: user.email,
+            name: user.name,
+            role: user.role 
+        }, 
+        process.env.JWT_SECRET_KEY, 
+        { expiresIn: '1d' });
+
+    return res.status(200).send({
+            token,
+    });
+    } catch (error) {
+    console.log(error);
+    return res.status(400).json({ error: error.message });
+    }
+  };
+
+
 exports.loginAdmin = async (req, res) => {
     console.log(req.body);
 
-    const { email, password } = req.body;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
 
-    // const { error } = loginSchema.validate(req.body);
-    // if (error) {
-    //     return res.status(400).send({
-    //         message: error.details[0].message,
-    //     });
-    // }
+    const { email, password } = req.body;
 
     try {
         const admin = await Admin.findOne({ email: email });

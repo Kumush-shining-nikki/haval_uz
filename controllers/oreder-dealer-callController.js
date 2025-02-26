@@ -16,11 +16,14 @@ const getAllDealerCalls = async (req, res) => {
 
 const addDealerCall = async (req, res) => {
   const { diler, toliqIsm, phone, email, savolTuri, izoh } = req.body;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   try {
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: "Email noto'g'ri formatda." });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+    
+    const { diler, toliqIsm, phone, email, savolTuri, izoh } = require(req.body);
 
     const newDealerCall = await Oreder_dealer_call.create({
       diler,
@@ -42,36 +45,27 @@ const addDealerCall = async (req, res) => {
 
 const updateDealerCall = async (req, res) => {
   const { id } = req.params;
-  const { diler, toliqIsm, phone, email, savolTuri, izoh } = req.body;
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
  if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "Noto'g'ri car ID." });
     }
-
-    const updateData = {};
-
-    if (email) {
-          if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: "Email noto'g'ri formatda." });
-          }
-          const existingAdmin = await Admin.findOne({ email, _id: { $ne: id } });
-          if (existingAdmin) {
-            return res.status(400).json({ error: "Bu email bilan boshqa admin allaqachon mavjud." });
-          }
-          updateData.email = email;
-        }
     
-    if (diler, toliqIsm, phone, savolTuri, izoh) {
-        await Car.find({diler, toliqIsm, phone,  savolTuri, izoh, _id: { $ne: id } });
-          updateData.diler = diler;
-          updateData.toliqIsm = toliqIsm; 
-          updateData.phone = phone; 
-          updateData.savolTuri = savolTuri; 
-          updateData.izoh = izoh; 
-    }
+    const { diler, toliqIsm, phone, email, savolTuri, izoh } = require(req.body);
+
+    const updateData = {
+      diler,
+      toliqIsm,
+      phone,
+      email,
+      savolTuri,
+      izoh
+    };
 
     const updatedDealerCall = await Oreder_dealer_call.findByIdAndUpdate(id, updateData, { new: true } )
 
