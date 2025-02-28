@@ -115,7 +115,7 @@ router
     .post("/login-Admin", loginLimiter, [...validateLogin], loginAdmin)
     .post(
         "/register",
-        jwtAccessMiddleware,
+        // jwtAccessMiddleware,
         [...validateRegister],
         register
     )
@@ -278,7 +278,7 @@ router
     )
 
     .post(
-        "/login",
+        "/loginUser",
         jwtAccessMiddleware,
         loginLimiter,
         [...validateLogin],

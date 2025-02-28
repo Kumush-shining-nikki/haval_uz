@@ -12,13 +12,8 @@ exports.register = async (req, res) => {
             return res.status(400).json({ errors: errors.array() });
         }
         
-        const { name, email, password, role } = req.body;
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: "Noto'g'ri email formati" });
-        }
-
+        const { username, email, password, role } = req.body;
+ 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(409).json({
@@ -28,33 +23,23 @@ exports.register = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        
         const user = await User.create({
-            name,
+            username,
             email,
             password: hashedPassword,
             role: role || "user",
         });
 
-        if (!name || !email || !password) {
-            return res
-                .status(400)
-                .json({ message: "Barcha maydonlarni to‘ldiring." });
-        }
+            if (!username || !email || !password) {
+                return res
+                    .status(400)
+                    .json({ message: "Barcha maydonlarni to‘ldiring." });
+            }
 
         if (!process.env.JWT_SECRET_KEY) {
             throw new Error("JWT_SECRET muhit o'zgaruvchisi mavjud emas!");
         }
-
-        const token = jwt.sign(
-            {
-                id: user._id,
-                email: user.email,
-                role: user.role,
-            },
-            process.env.JWT_SECRET_KEY,
-            { expiresIn: "1h" }
-        );
-        console.log(token)
         res.status(200).json({
             message: "Foydalanuvchi muvaffaqiyatli ro‘yxatdan o‘tdi.",
             user,
