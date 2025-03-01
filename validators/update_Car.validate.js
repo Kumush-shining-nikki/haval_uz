@@ -42,7 +42,7 @@ exports.validateCarUpdate = checkSchema({
   image: {
     custom: {
       options: (_, { req }) => {
-        if (!req.file) return true; // Rasm yuklanmasa, tekshirish o'tkazilmaydi.
+        if (!req.file) return true; 
 
         const { originalname, size } = req.file;
         const fileExtension = originalname.split(".").pop().toLowerCase();
