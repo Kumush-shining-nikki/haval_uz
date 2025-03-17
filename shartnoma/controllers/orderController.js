@@ -34,22 +34,41 @@ exports.createOrder = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    let query = {};
-
-    if (req.user.role !== "admin") {
-      query.userId = req.user.id; 
-    }
-
-    const pendingOrders = await Order.find({ ...query, status: "Pending" });
-    const cancelledOrders = await Order.find({ ...query, status: "Cancelled" });
-
-    res.json({
-      pending: pendingOrders,
-      cancelled: cancelledOrders,
+    const userId = req.body;
+    const orders = await Order.find();
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+    res.status(200).json({
+      orders
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ error: "Server xatosi" });
+  }
+};
+
+exports.deleteOrder = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Yaroqsiz ID" });
+  }
+
+  try {
+      const deletedOrder = await Order.findById(id);
+
+      if (!deletedOrder) {
+      } else {
+          res.status(404).json({ message: "Order topilmadi" });
+      }
+
+      await Order.findByIdAndDelete(id);
+
+      return res
+          .status(200)
+          .json({ message: "Order muvaffaqiyatli o'chirildi" });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Order o'chirishda xatolik yuz berdi" });
   }
 };
 
