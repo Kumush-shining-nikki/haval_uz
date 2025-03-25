@@ -34,20 +34,23 @@ const {
 const { validateProfilUpdate } = require("./validators/profil.validate.js");
 const { pdfValidationRules } = require("./validators/pfkit.js");
 const multer = require("multer");
-const upload = multer();
+const upload = multer({
+  limits: { fileSize: 4 * 1024 * 1024},
+  storage: multer.memoryStorage()
+});
 const { checkSchema } = require("express-validator");
 const {
   getAllAdmin,
   updateAdmin,
 } = require("./controllers/adminController");
-const { createAdmin, updateSuperAdmin, deleteAdmin } = require("./controllers/superAdminController.js")
+const { createAdmin, updateSuperAdmin, deleteAdmin, getAdminLastLogin } = require("./controllers/superAdminController.js")
 const {
   getCars,
   addCar,
   updateCar,
   deleteCar,
 } = require("./controllers/carController");
-const { register, login, loginAdmin } = require("./controllers/authController");
+const { register, login, loginAdmin, loginSuperAdmin } = require("./controllers/authController");
 const {
   getDiler,
   addDiler,
@@ -90,7 +93,7 @@ const {
   addTestDriver,
 } = require("./controllers/test_drayverController");
 const { loginLimiter } = require("./middlewares/loginLimiter");
-const { jwtAccessMiddleware } = require("./middlewares/jwt-access.middleware");
+const { jwtAccessMiddleware } = require("./middlewares/jwt-access.middleware"); 
 const {
   roleAccessMiddleware,
 } = require("./middlewares/role-access.middleware");
@@ -108,6 +111,8 @@ const {
 } = require("./shartnoma/controllers/orderController");
 const { Profil, updatedProfil } = require("./controllers/profil.js");
 const { adminAccessMiddleware } = require("./middlewares/admin-access.middleware.js");
+const { message } = require("antd");
+const { shartnomalarAdmin, shartnomalarUser, usersQidiruv } = require("./controllers/qidiruvController.js");
 const router = require("express").Router();
 
 router
@@ -125,6 +130,14 @@ router
     createAdmin
   )
   .post("/login-Admin", loginLimiter, [...validateLogin], loginAdmin)
+  .post("/login-SuperAdmin", loginLimiter, [...validateLogin], loginSuperAdmin)
+
+  .get(
+    "/lastlogin/:id",
+    adminAccessMiddleware,
+    roleAccessMiddleware(["superadmin"]),
+    getAdminLastLogin
+  )
   .put(
     "/admins/:id",
     adminAccessMiddleware,
@@ -139,14 +152,16 @@ router
     deleteAdmin
   )
 
-  .post("/login-SuperAdmin", loginLimiter, [...validateLogin], loginAdmin)
-
   .get("/cars", jwtAccessMiddleware, getCars)
   .post(
     "/add-car",
     jwtAccessMiddleware,
     roleAccessMiddleware(["superadmin", "admin"]),
-    upload.single("image"),
+    upload.array("images", 5),
+    // (req, res) => {
+    //   console.log(req.files);
+    //   res.json({ message: "Fayllar yuklandi", files: req.files });
+    // },
     [...validateCar],
     addCar
   )
@@ -154,7 +169,7 @@ router
     "/cars/:id",
     jwtAccessMiddleware,
     roleAccessMiddleware(["superadmin", "admin"]),
-    upload.single("image"),
+    upload.single("image", 5),
     [...validateCarUpdate],
     updateCar
   )
@@ -300,10 +315,10 @@ router
     getAllUsers
   )
   .get(
-    "/users/:id",
+    "/qidiruvUsers",
     jwtAccessMiddleware,
     roleAccessMiddleware(["superadmin", "admin"]),
-    getUserById
+    usersQidiruv
   )
   .delete(
     "/users/:id",
@@ -343,8 +358,13 @@ router
     createOrder
   )
   .get("/orders", /* jwtAccessMiddleware, */ getOrders)
-  .post("/orders/pay", jwtAccessMiddleware, makePayment)
-  .delete("/orders/:id", /* jwtAccessMiddleware, */ deleteOrder)
+  .post(
+    "/orders-pay/:id",
+    jwtAccessMiddleware,
+    roleAccessMiddleware(["superadmin", "admin"]),
+    makePayment
+  )
+  .delete("/orders/:id", jwtAccessMiddleware, deleteOrder)
 
   .get("/profil/:id", jwtAccessMiddleware, Profil)
   .put(
@@ -352,5 +372,21 @@ router
     jwtAccessMiddleware,
     [...validateProfilUpdate],
     updatedProfil
-  );
+  )
+
+  .get(
+    "/qidiruvOrders",
+    jwtAccessMiddleware,
+    roleAccessMiddleware(["superadmin", "admin"]),
+    shartnomalarAdmin
+  )
+
+  .get(
+    "/userorders",
+    jwtAccessMiddleware,
+    shartnomalarUser
+  )
+
+
+
 module.exports = router;

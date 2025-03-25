@@ -76,27 +76,21 @@ exports.login = async (req, res) => {
 
 
 exports.loginAdmin = async (req, res) => {
-    console.log(req.body);
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { email, password } = req.body;
-
     try {
-        const admin = await Admin.findOne({ email: email });
-        console.log(admin);
+        const { email, password } = req.body;
+        const admin = await Admin.findOne({ email });
 
         if (!admin) {
-            return res.status(404).send("Admin not found");
+            return res.status(404).json({ error: "Admin topilmadi!" });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, admin.password);
-        if (!isPasswordValid) {
-            return res.status(401).send("Invalid credentials");
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Noto‘g‘ri parol!" });
         }
+
+        admin.lastLogin = new Date();
+        await admin.save();
 
         const token = jwt.sign(
             {
@@ -109,9 +103,56 @@ exports.loginAdmin = async (req, res) => {
             { expiresIn: "1d" }
         );
 
-        return res.status(200).send({
-            token,
-        });
+        return res.status(200).json({ message: "Tizimga muvaffaqiyatli kirdingiz", token });
+    } catch (error) {
+        console.error("Login xatosi:", error);
+        return res.status(500).json({ error: "Server xatosi yuz berdi" });
+    }
+};
+
+
+exports.loginSuperAdmin = async (req, res) => {
+    console.log(req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    try {
+        const admin = await Admin.findOne({ email: email });
+
+        if (!admin) {
+            return res.status(404).json({ error: "Admin not found" });
+        }
+
+        if (admin.role !== "superadmin") {
+            return res.status(403).json({ error: "Sizga ruxsat yo‘q!" });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, admin.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        admin.lastLogin = new Date();
+        await admin.save();
+
+        const token = jwt.sign(
+            {
+                id: admin._id,
+                email: admin.email,
+                adminName: admin.adminName,
+                role: admin.role,
+            },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: "1d" }
+        );
+
+        return res.status(200).json({ token });
+
     } catch (error) {
         console.error("Error during login:", error);
         return res.status(500).json({ error: "Server xatosi yuz berdi." });
